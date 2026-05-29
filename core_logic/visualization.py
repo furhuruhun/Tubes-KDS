@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Optional
 
 import matplotlib
-matplotlib.use("Agg") # Non-interactive backend agar aman disimpan langsung ke file png
+matplotlib.use("Agg") 
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import matplotlib.gridspec as gridspec
@@ -20,7 +20,6 @@ try:
 except ImportError:
     HAS_SEABORN = False
 
-# Konfigurasi palet warna tema awal
 BG_COLOR = "#0D1B2A"      
 TEXT_COLOR = "#E0E1DD"    
 MUTED_COLOR = "#8D99AE"   
@@ -35,7 +34,6 @@ ESSENTIAL_AMINO_ACIDS = frozenset({
 
 
 def _apply_dark_style():
-    """Mengatur gaya visual dasar grafik Matplotlib."""
     plt.rcParams.update({
         "figure.facecolor": BG_COLOR,
         "axes.facecolor": BG_COLOR,
@@ -45,14 +43,13 @@ def _apply_dark_style():
         "ytick.color": MUTED_COLOR,
         "axes.edgecolor": ACCENT_PRIMARY,
         "grid.color": ACCENT_PRIMARY,
-        "grid.alpha": 0.4,
+        "grid.alpha": 0.3,
         "font.family": "sans-serif",
         "figure.dpi": 300
     })
 
 
 def plot_calorie_distribution(data: dict, save_path: Path):
-    """Membuat diagram lingkaran untuk distribusi kalori."""
     _apply_dark_style()
     rasio = data.get("rasio_kalori", {})
     energi = data.get("energi", {})
@@ -69,16 +66,13 @@ def plot_calorie_distribution(data: dict, save_path: Path):
     ax.pie(values, explode=explode, labels=labels, colors=colors, autopct="%1.1f%%", startangle=90, textprops=dict(color=TEXT_COLOR))
     fig.gca().add_artist(plt.Circle((0, 0), 0.55, fc=BG_COLOR))
     
-    total_kcal = energi.get("total_kcal", 0)
-    ax.text(0, 0, f"{total_kcal:.0f}\nkkal", ha="center", va="center", color=TEXT_COLOR, fontsize=12, fontweight="bold")
-    ax.set_title("Proporsi Energi Makronutrien")
+    ax.text(0, 0, f"{energi.get('total_kcal', 0):.0f}\nkkal", ha="center", va="center", color=TEXT_COLOR, fontsize=12, fontweight="bold")
     plt.tight_layout()
     plt.savefig(save_path)
     plt.close()
 
 
 def plot_atp_comparison(data: dict, save_path: Path):
-    """Membuat perbandingan diagram batang energi kalori dan estimasi ATP dasar."""
     _apply_dark_style()
     energi = data.get("energi", {})
     atp = data.get("atp", {})
@@ -106,7 +100,6 @@ def plot_atp_comparison(data: dict, save_path: Path):
 
 
 def plot_amino_acid_profile(data: dict, save_path: Path):
-    """Membuat grafik batang horizontal untuk profil massa asam amino."""
     aa_breakdown = data.get("breakdown_asam_amino")
     if not aa_breakdown: return
         
@@ -126,7 +119,6 @@ def plot_amino_acid_profile(data: dict, save_path: Path):
 
 
 def plot_atp_per_amino_acid(data: dict, save_path: Path):
-    """Membuat grafik batang kontribusi energi spesifik per asam amino individual."""
     atp_detail = data.get("atp_detail_per_aa")
     if not atp_detail: return
         
@@ -145,8 +137,43 @@ def plot_atp_per_amino_acid(data: dict, save_path: Path):
     plt.close()
 
 
+def plot_dashboard_summary(data: dict, save_path: Path):
+    """Menggabungkan komponen utama ke dalam satu lembar panel berkas infografis besar."""
+    _apply_dark_style()
+    fig = plt.figure(figsize=(12, 8))
+    gs = gridspec.GridSpec(2, 2)
+    
+    # Subplot Mini Kiri: Info
+    ax_info = fig.add_subplot(gs[0, 0])
+    ax_info.axis("off")
+    ax_info.text(0.0, 0.7, f"Klasifikasi Diet: {data.get('klasifikasi_diet', {}).get('label', 'Unclassified')}", fontsize=12, fontweight="bold", color=TEXT_COLOR)
+    
+    # Subplot Mini Kanan: Pie
+    ax_pie = fig.add_subplot(gs[0, 1])
+    rasio = data.get("rasio_kalori", {})
+    ax_pie.pie([rasio.get("karbohidrat_ratio", 0), rasio.get("lipid_ratio", 0), rasio.get("protein_ratio", 0)], colors=[ACCENT_PRIMARY, ACCENT_SECONDARY, MUTED_COLOR])
+    ax_pie.set_title("Alokasi Kalori")
+
+    # Subplot Bawah Kiri: Bar ATP
+    ax_atp = fig.add_subplot(gs[1, 0])
+    atp = data.get("atp", {})
+    ax_atp.bar(["Karbo", "Lipid", "Protein"], [atp.get("karbohidrat_atp", 0), atp.get("lipid_atp", 0), atp.get("protein_atp", 0)], color=ACCENT_SECONDARY)
+    ax_atp.set_title("Estimasi Output ATP")
+
+    # Subplot Bawah Kanan: AA
+    ax_aa = fig.add_subplot(gs[1, 1])
+    aa_data = data.get("breakdown_asam_amino", {})
+    if aa_data:
+        top_aa = sorted(aa_data.items(), key=lambda x: x[1], reverse=True)[:5]
+        ax_aa.barh([x[0].capitalize() for x in top_aa], [x[1] for x in top_aa], color=ACCENT_PRIMARY)
+    ax_aa.set_title("Kandungan Asam Amino Utama")
+
+    plt.tight_layout()
+    plt.savefig(save_path)
+    plt.close()
+
+
 def print_dashboard(data: dict):
-    """Mencetak visualisasi grafik batang teks sederhana di terminal console."""
     rasio = data.get("rasio_kalori", {})
     print("\n" + "="*50)
     print("         DASHBOARD TEKSTUAL MONITORING ENERGI")
@@ -166,6 +193,7 @@ def visualize_all(export_dict: dict, save_dir: str = "plots"):
         plot_amino_acid_profile(export_dict, out_path / "amino_acid_profile.png")
     if "atp_detail_per_aa" in export_dict:
         plot_atp_per_amino_acid(export_dict, out_path / "atp_detail_per_amino_acid.png")
+    plot_dashboard_summary(export_dict, out_path / "diet_dashboard.png")
     print_dashboard(export_dict)
 
 
