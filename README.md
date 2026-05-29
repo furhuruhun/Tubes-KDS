@@ -31,7 +31,7 @@ Sistem diuji dan dirancang berjalan pada lingkungan Python. Pastikan pustaka yan
 
 ```bash
 # Clone repository
-git clone [https://github.com/furhuruhun/Tubes-KDS.git](https://github.com/furhuruhun/Tubes-KDS.git)
+git clone https://github.com/furhuruhun/Tubes-KDS.git
 
 # Pindah ke direktori program
 cd Tubes-KDS
